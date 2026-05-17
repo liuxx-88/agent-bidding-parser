@@ -2,7 +2,7 @@
 
 面向 **Agent 开发者大赛** 的前端演示应用：模拟标书（PDF/Word）上传、Milo 存储寻址与智能 Agent 解析全流程，并以可视化日志与结构化 JSON 展示结果。
 
-> 当前为 **前端模拟实现**，未接入真实 Milo / Agent 后端；上传与解析进度由 `setTimeout` 与本地状态驱动。
+> 文件上传已对接内网 API（`POST /api/files`），经本地 Node 代理转发；Agent 解析阶段仍为前端 Mock。
 
 ## 功能概览
 
@@ -10,7 +10,7 @@
 |------|--------|------|
 | 空闲 | `idle` | 等待用户上传标书 |
 | 上传中 | `uploading` | 模拟读取与传输文件 |
-| 存储中 | `storing` | 模拟向 Milo 申请存储地址 |
+| 存储中 | `storing` | 模拟向 Minlo 申请存储地址 |
 | 解析中 | `interacting` | 模拟 Agent 语义分析、合规审查、结构化 |
 | 完成 | `success` | 展示结构化 JSON 与操作入口 |
 
@@ -19,7 +19,7 @@
 - 深色科技风 UI（Tailwind CSS）
 - 实时 Agent 日志流
 - 解析进度条与粒子/轨道动画
-- Milo 存储路径展示
+- Minlo 存储路径展示
 - 结构化输出 JSON 预览
 
 ## 技术栈
@@ -45,7 +45,14 @@
 # 安装依赖
 pnpm install
 
-# 开发模式（支持 HMR 热更新）
+# 同时启动：本地代理(3001) + Vite 前端
+pnpm dev:all
+
+# 或分两个终端：
+pnpm proxy   # 代理 -> http://192.168.3.153:3000
+pnpm dev     # 前端，/api 经 Vite 转到本地代理
+
+# 仅前端（需已单独运行 pnpm proxy）
 pnpm dev
 
 # 生产构建
@@ -64,11 +71,16 @@ pnpm lint
 
 ```
 my-app/
+├── server/proxy.mjs        # 本地 Node 代理（3001 -> 192.168.3.153:3000）
+├── .env.development        # API 与代理端口配置
 ├── index.html              # HTML 入口
-├── vite.config.ts          # Vite + React + Tailwind 插件
+├── vite.config.ts          # Vite + React + Tailwind + /api 代理
 ├── tailwind.config.js      # 自定义动画（spin-slow / ping-slow / particle）
 ├── package.json
 ├── src/
+│   ├── api/
+│   │   ├── client.ts       # 通用 fetch 封装
+│   │   └── files.ts        # POST /api/files 上传
 │   ├── main.tsx            # React 挂载与 HMR root 复用
 │   ├── index.css           # Tailwind 入口 + 全局 CSS 变量
 │   ├── App.tsx             # 主界面与业务流程
@@ -85,13 +97,36 @@ my-app/
 用户选择文件
     → handleFileUpload
     → startWorkflow
-        1. UPLOADING   模拟上传
-        2. STORING     生成 milo:// 假地址
+        1. UPLOADING   POST /api/files（真实上传）
+        2. STORING     使用接口返回 path/url
         3. INTERACTING runAgentSimulation（多步日志 + 进度）
         4. SUCCESS     展示 mockJson
 ```
 
-对接真实后端时，建议在 `startWorkflow` / `runAgentSimulation` 中替换 `setTimeout`，改为调用 API，并用 WebSocket 或 SSE 推送日志与进度。
+## API 代理与上传调试
+
+请求链路：
+
+```
+浏览器  →  Vite (5173) /api/*
+       →  本地 proxy (3001) /api/*
+       →  内网 API (192.168.3.153:3000) /api/*
+```
+
+| 环境变量 | 默认值 | 说明 |
+|----------|--------|------|
+| `API_PROXY_TARGET` | `http://192.168.3.153:3000` | 代理目标 |
+| `PROXY_PORT` | `3001` | 本地代理端口 |
+| `VITE_API_BASE_URL` | `/api` | 前端请求前缀 |
+
+健康检查：`curl http://localhost:3001/health`
+
+**若上传返回 404**：常见原因是代理剥掉了 `/api` 前缀（已修复）。请确认：
+1. 已运行 `pnpm proxy` 或 `pnpm dev:all`
+2. 直连后端测试：`curl -X POST http://192.168.3.153:3000/api/files -F "file=@test.pdf"`
+3. 代理日志应显示 `-> .../api/files`，而不是 `.../files`
+
+上传调试：在页面选择文件，或调用 `uploadFile()`；若后端表单字段不是 `file`，修改 `src/api/files.ts` 中 `FILE_FIELD_NAME`。
 
 ## 样式与 Tailwind
 
@@ -135,7 +170,7 @@ import tailwindcss from '@tailwindcss/vite'
 
 ## 已知限制
 
-- 业务流程为前端 Mock，无真实文件上传与 Milo / Agent API
+- 业务流程为前端 Mock，无真实文件上传与 Minlo / Agent API
 - `App.tsx` 部分 state 未标注 TypeScript 类型，`pnpm build` 可能因 `tsc` 报错；可单独用 `pnpm vite build` 验证前端打包
 - `milo_path` 在 `runAgentSimulation` 闭包中可能读到空的 `miloUrl`（应用 `setMiloUrl` 后的最新值或传入参数修复）
 

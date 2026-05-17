@@ -2,7 +2,7 @@
 name: tunnel-bid-agent-app
 description: >-
   Guides development of the Tunnel Co. bid-document Agent demo (React 19, Vite 8,
-  Tailwind v4). Use when editing my-app, App.tsx workflow, Milo mock integration,
+  Tailwind v4). Use when editing my-app, App.tsx workflow, Minlo mock integration,
   Tailwind/HMR setup, or Agent competition UI for 隧道股份标书解析.
 ---
 
@@ -10,7 +10,7 @@ description: >-
 
 ## 项目定位
 
-单页 React 应用，演示 **标书上传 → Milo 存储 → Agent 解析 → JSON 输出** 的完整 UX。业务逻辑在 `src/App.tsx`，当前为 **Mock**，无真实后端。
+单页 React 应用，演示 **标书上传 → Minlo 存储 → Agent 解析 → JSON 输出** 的完整 UX。业务逻辑在 `src/App.tsx`，当前为 **Mock**，无真实后端。
 
 ## 技术约束（修改前必读）
 
@@ -92,7 +92,7 @@ type AgentLog = { id: number; text: string }
 **新增解析步骤日志**  
 在 `runAgentSimulation` 的 `tasks` 数组追加 `{ msg, progress }`。
 
-**接 Milo 上传 API**  
+**接 Minlo 上传 API**  
 替换 `startWorkflow` 中 `setTimeout`；`setMiloUrl` 使用接口返回值。
 
 **调整主题色**  
